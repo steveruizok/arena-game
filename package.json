@@ -2,17 +2,27 @@
   "name": "game-4",
   "version": "0.1.0",
   "private": true,
+  "devDependencies": {
+    "babel-plugin-emotion": "^10.0.33"
+  },
   "dependencies": {
+    "@emotion/core": "^10.0.27",
+    "@emotion/styled": "^10.0.27",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
     "@types/jest": "^24.0.0",
+    "@types/lodash-es": "^4.17.3",
     "@types/node": "^12.0.0",
     "@types/react": "^16.9.0",
     "@types/react-dom": "^16.9.0",
+    "framer-motion": "^1.8.4",
+    "heap": "^0.2.6",
+    "lodash-es": "^4.17.15",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
     "react-scripts": "3.3.1",
+    "state-designer": "^1.0.40",
     "typescript": "~3.7.2"
   },
   "scripts": {

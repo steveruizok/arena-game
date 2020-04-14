@@ -1,13 +1,86 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+@font-face {
+  font-family: "Bender";
+  font-weight: 400;
+  src: url("/fonts/Bender-Light.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Bender";
+  font-weight: 400;
+  font-style: italic;
+  src: url("/fonts/Bender-Light-Italic.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Bender";
+  font-weight: 500;
+  src: url("/fonts/Bender.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Bender";
+  font-weight: 500;
+  font-style: italic;
+  src: url("/fonts/Bender-Italic.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Bender";
+  font-weight: 600;
+  src: url("/fonts/Bender-Bold.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Bender";
+  font-weight: 600;
+  font-style: italic;
+  src: url("/fonts/Bender-Bold-Italic.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Bender";
+  font-weight: 800;
+  src: url("/fonts/Bender-Black.woff") format("woff");
+}
+
+:root {
+  --text: rgb(238, 232, 220);
+  --surface: rgba(238, 232, 220, 0.05);
+  --highlight: rgba(238, 232, 220, 0.1);
+  --active: rgba(238, 232, 220, 0.22);
+  --indent: rgba(0, 0, 0, 0.1);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --outline: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+  --damage: rgb(215, 71, 111);
+  --health: #99df66;
+}
+
+html,
+* {
+  box-sizing: border-box;
+  font-family: "Bender", monospace;
+  font-weight: 600;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+body {
+  background-color: rgb(31, 35, 36);
+  color: var(--text);
+  margin: 0;
+}
+
+button,
+input {
+  color: var(--text);
+  font-family: "Bender", monospace;
+  font-weight: 600;
+  font-size: 14px;
+  text-shadow: var(--outline);
+}
+
+button {
+  user-select: none;
+  text-shadow: var(--outline);
 }
