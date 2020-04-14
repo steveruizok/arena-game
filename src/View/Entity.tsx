@@ -96,17 +96,18 @@ const Entity: React.FC<Props> = ({ entity, children }) => {
 export default Entity
 
 const HealthBar: React.FC<{ value: number }> = ({ value }) => {
-  const rightEdge = Math.max(0, 23 * value)
+  const width = 16
+  const rightEdge = Math.max(0, width * value)
 
   return (
     <svg height={32} width={32}>
-      <g transform={"translate(4, 2)"}>
-        <rect height={3} width={24} stroke="#000" strokeWidth={1} />
+      <g transform={`translate(${(32 - width) / 2}, .5)`}>
+        <rect height={3} width={width} stroke="#000" strokeWidth={1} />
         <rect
           x={0.5}
           y={0.5}
           height={2}
-          width={23}
+          width={width - 1}
           fill="var(--damage)"
           strokeWidth={1}
         />
@@ -119,10 +120,10 @@ const HealthBar: React.FC<{ value: number }> = ({ value }) => {
           strokeWidth={1}
         />
         <line
-          x1={1 + rightEdge}
+          x1={rightEdge}
           y1={0.5}
-          x2={1 + rightEdge}
-          y2={0.5}
+          x2={rightEdge}
+          y2={2.5}
           strokeWidth={1}
           stroke="#000"
         />
@@ -131,18 +132,33 @@ const HealthBar: React.FC<{ value: number }> = ({ value }) => {
   )
 }
 
+const r = 8
+const ir = 4
+const b = 1 / 6
+const c = 2 * Math.PI * ir
+const q = c * b
+
 const EntitySprite: React.FC<{ state: "idle" | "fighting" }> = ({ state }) => (
   <svg height={32} width={32}>
     <g>
       <circle
         cx={16}
         cy={16}
-        r={8}
+        r={r}
         fill={state === "fighting" ? "#faa" : "var(--text)"}
         stroke="#000"
         strokeWidth={1}
       />
-      <line x1={16} y1={16} x2={16} y2={8} stroke="#000" strokeWidth={1} />
+      <circle
+        cx={16}
+        cy={16}
+        r={ir}
+        fill={"none"}
+        stroke={"rgba(0,0,0,.5)"}
+        strokeWidth={ir * 1.75}
+        strokeDashoffset={c * (b / 2) + c / 4}
+        strokeDasharray={`${q} ${c - q}`}
+      />
     </g>
   </svg>
 )

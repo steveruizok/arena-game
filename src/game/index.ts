@@ -69,6 +69,7 @@ export default createStateDesigner({
   initial: "selecting",
   states: {
     selecting: {
+      onEnter: "clearSelectedEntity",
       on: {
         COMMAND_CLICKED_CELL: {
           do: "spawnMob",
@@ -322,6 +323,10 @@ export default createStateDesigner({
     },
     setHoveredEntity(data, id: string) {
       data.hoveredEntity = id
+
+      const hovered = data.entities.find((m) => m.data.id === id)
+
+      data.hoveredPosition = hovered?.data.position
     },
     clearHoveredEntity(data) {
       data.hoveredEntity = undefined
@@ -408,6 +413,7 @@ export default createStateDesigner({
     // SELECTED ENTITY
     setSelectedEntity(data, id: string) {
       data.selectedEntity = id
+      const selected = data.entities.find((m) => m.data.id === id)
     },
     clearSelectedEntity(data) {
       data.selectedEntity = undefined

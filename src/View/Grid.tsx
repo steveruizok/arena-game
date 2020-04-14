@@ -8,50 +8,10 @@ import find from "lodash-es/find"
 import styled from "@emotion/styled"
 import { useStateDesigner } from "state-designer"
 
-const Container = styled.div`
-  display: grid;
-  grid-template-columns: 320px;
-  grid-template-rows: 320px;
-  grid-auto-rows: fit-content(32px);
-  grid-row-gap: 16px;
-`
-
-const Board = styled.div({
-  position: "relative",
-  height: 320,
-  width: 320,
-})
-
-const Buttons = styled.div`
-  display: grid;
-  grid-auto-columns: fit-content(128px);
-  grid-template-rows: 32px;
-  grid-column-gap: 16px;
-  grid-auto-flow: column;
-
-  > button {
-    font-weight: bold;
-    background: none;
-    background-color: var(--surface);
-    border: 1px solid #fff;
-    border-radius: 8px;
-    padding: 0px 12px 2px 12px;
-    outline: none;
-  }
-
-  > button:active {
-    background-color: var(--active);
-  }
-
-  > button.active {
-    background-color: var(--active);
-  }
-`
-
 export interface Props {}
 
 const Grid: React.FC<Props> = ({ children }) => {
-  const { whenIn, isIn, send } = useStateDesigner(game)
+  const { isIn, send } = useStateDesigner(game)
 
   return (
     <Container>
@@ -92,3 +52,43 @@ const Grid: React.FC<Props> = ({ children }) => {
 }
 
 export default Grid
+
+const Container = styled.div`
+  display: grid;
+  grid-template-columns: 320px;
+  grid-template-rows: 320px;
+  grid-auto-rows: fit-content(32px);
+  grid-row-gap: 16px;
+`
+
+const Board = styled.div({
+  position: "relative",
+  height: 320,
+  width: 320,
+})
+
+const Buttons = styled.div`
+  display: grid;
+  grid-auto-columns: fit-content(128px);
+  grid-template-rows: 32px;
+  grid-column-gap: 16px;
+  grid-auto-flow: column;
+
+  > button {
+    font-weight: bold;
+    background: none;
+    background-color: var(--surface);
+    border: 1px solid #fff;
+    border-radius: 8px;
+    padding: 0px 12px 2px 12px;
+    outline: none;
+  }
+
+  > button:active {
+    background-color: var(--active);
+  }
+
+  > button.active {
+    background-color: var(--active);
+  }
+`

@@ -52,7 +52,12 @@
   --shadow: rgba(0, 0, 0, 0.5);
   --outline: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
   --damage: rgb(215, 71, 111);
+  --range: rgba(215, 71, 111, 0.125);
+  --target: rgba(215, 71, 111, 0.35);
   --health: #99df66;
+  --position: rgb(255, 216, 76);
+  --entity: rgb(255, 147, 91);
+  --selected: rgb(223, 103, 43);
 }
 
 html,
