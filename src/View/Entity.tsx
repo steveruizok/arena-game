@@ -1,5 +1,5 @@
 import React from "react"
-import game from "game"
+import game from "game/game"
 import * as DS from "game/types"
 import { motion, useAnimation } from "framer-motion"
 import { useStateDesigner } from "state-designer"
@@ -14,12 +14,11 @@ const transition = {
 }
 
 export interface Props {
-  entity: DS.M<DS.Entity>
+  entity: DS.Entity
 }
 
 const Entity: React.FC<Props> = ({ entity, children }) => {
-  const { data, isIn } = useStateDesigner(entity)
-  const { position, vision, health } = data
+  const { position, vision, health } = entity
 
   const prevFacing = React.useRef(vision.facing)
   const angle = React.useRef(directionAngles[vision.facing])
@@ -63,17 +62,19 @@ const Entity: React.FC<Props> = ({ entity, children }) => {
     })
   }, [position, vision.facing])
 
+  const isDead = entity.health.dead
+
   return (
     <motion.div
-      onMouseEnter={() => game.send("HOVERED_ENTITY", entity.data.id)}
-      onMouseLeave={() => game.send("UNHOVERED_ENTITY", entity.data.id)}
-      onClick={() => game.send("CLICKED_ENTITY", entity.data.id)}
+      onMouseEnter={() => game.send("HOVERED_ENTITY", entity)}
+      onMouseLeave={() => game.send("UNHOVERED_ENTITY", entity)}
+      onClick={() => game.send("CLICKED_ENTITY", entity)}
       style={{
         position: "absolute",
         height: 31,
         width: 31,
-        opacity: isIn("dead") ? 0.3 : 1,
-        zIndex: isIn("dead") ? 1 : 10,
+        opacity: isDead ? 0.3 : 1,
+        zIndex: isDead ? 1 : 10,
       }}
       initial={false}
       animate={animation}
@@ -86,9 +87,9 @@ const Entity: React.FC<Props> = ({ entity, children }) => {
         animate={counterAnimation}
         transition={transition}
       >
-        {!isIn("dead") && <HealthBar value={health.current / health.max} />}
+        {!isDead && <HealthBar value={health.current / health.max} />}
       </motion.div>
-      <EntitySprite state={isIn("fighting") ? "fighting" : "idle"} />
+      <EntitySprite state={"idle"} />
     </motion.div>
   )
 }

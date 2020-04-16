@@ -1,5 +1,5 @@
 import React from "react"
-import game from "game"
+import game from "game/game"
 import Entity from "./Entity"
 import { useStateDesigner } from "state-designer"
 
@@ -10,7 +10,7 @@ const Entities: React.FC<Props> = ({ children }) => {
 
   return (
     <div style={{ position: "absolute", top: 0, left: 0 }}>
-      {data.entities.map((entity) => (
+      {Array.from(data.entities.values()).map((entity) => (
         <Entity key={entity.id} entity={entity} />
       ))}
     </div>

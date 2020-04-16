@@ -37,7 +37,8 @@ export type Entity = {
     }
   }
   vision: {
-    cells: Position[]
+    tiles: Tile[]
+    positions: Position[]
     entities: string[]
     facing: Direction
   }
@@ -65,4 +66,19 @@ export type Shot = {
   to: Position
   hit: boolean
   done: boolean
+}
+
+export type RawShot = {
+  from: Position
+  to: Position
+  hit: boolean
+}
+
+// Map
+
+export type Coord = { x: number; y: number; z: number }
+
+export type Tile = {
+  position: Position
+  entity?: Entity
 }

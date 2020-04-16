@@ -10533,10 +10533,10 @@ stack-utils@^1.0.1:
   resolved "https://registry.yarnpkg.com/stack-utils/-/stack-utils-1.0.2.tgz#33eba3897788558bebfc2db059dc158ec36cebb8"
   integrity sha512-MTX+MeG5U994cazkjd/9KNAapsHnibjMLnfXodlkXw76JEea0UiNzrqidzo1emMwk7w5Qhc9jd4Bn9TBb1MFwA==
 
-state-designer@^1.0.40:
-  version "1.0.40"
-  resolved "https://registry.yarnpkg.com/state-designer/-/state-designer-1.0.40.tgz#5ce1c29f7cc09aae6efd949b4a81e8d7e28d7e3f"
-  integrity sha512-aXtSmlt4faHfNzIIakYFIZzvYVzYDco4bKeCv2yiXxgD98QUOkv2qBbpxXmNfjaZKpBmKjAUgoVy5h/YIMN5+A==
+state-designer@^1.0.42:
+  version "1.0.42"
+  resolved "https://registry.yarnpkg.com/state-designer/-/state-designer-1.0.42.tgz#90e5ffe78eb03f6b0007b573edeb0533c6013ade"
+  integrity sha512-07KpFryEUPOCJU1QY2beezxtVqJnjFpM/jnqD/jKVpv7WU3nd5OxOKnIsMvsZvFFiynM17AnTM7uY5gN/xRqiQ==
   dependencies:
     immer "^5.1.0"
     lodash-es "^4.17.15"

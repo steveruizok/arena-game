@@ -1,25 +1,26 @@
 import React from "react"
-import game from "game"
-import { Position } from "game/types"
+import game from "game/game"
+import { Position, Tile } from "game/types"
 import { directionAngles } from "game/utils"
 
 export interface Props {
-  position: Position
+  tile: Tile
   visible: boolean
 }
 
-const Cell: React.FC<Props> = ({ position, visible, children }) => {
+const Cell: React.FC<Props> = ({ tile, visible, children }) => {
+  const { position } = tile
   const { x, y } = position
 
   return (
     <div
-      onMouseEnter={() => game.send("HOVERED_CELL", position)}
-      onMouseLeave={() => game.send("UNHOVERED_CELL", position)}
+      onMouseEnter={() => game.send("HOVERED_TILE", tile)}
+      onMouseLeave={() => game.send("UNHOVERED_TILE", tile)}
       onClick={(e) => {
         if (e.metaKey) {
-          game.send("COMMAND_CLICKED_CELL", position)
+          game.send("COMMAND_CLICKED_TILE", tile)
         } else {
-          game.send("CLICKED_CELL", position)
+          game.send("CLICKED_TILE", tile)
         }
       }}
       style={{

@@ -1,6 +1,6 @@
 import React from "react"
 import Cell from "./Cell"
-import game from "game"
+import game from "game/game"
 import find from "lodash-es/find"
 import styled from "@emotion/styled"
 import { motion } from "framer-motion"
@@ -19,34 +19,33 @@ export interface Props {}
 
 const Overlays: React.FC<Props> = ({ children }) => {
   const { data, isIn } = useStateDesigner(game)
-
-  const { hoveredPosition, hoveredEntity } = data
+  const { tiles, entities } = data.ui
 
   return (
     <OverlaysContainer>
       <svg width={320} height={320} viewBox={"0 0 320 320"}>
-        {data.path.map((position, i) => (
+        {tiles.inPath.map((tile, i) => (
           <CellHighlight
             key={i}
-            x={position.x}
-            y={position.y}
+            x={tile.position.x}
+            y={tile.position.y}
             color="var(--highlight)"
           />
         ))}
-        {data.inRange.map((position, i) => (
+        {tiles.inRange.map((tile, i) => (
           <CellHighlight
             key={i}
-            x={position.x}
-            y={position.y}
+            x={tile.position.x}
+            y={tile.position.y}
             color="var(--range)"
           />
         ))}
         {isIn("aiming.selected") && <TargetingLine />}
-        {hoveredPosition && (
+        {tiles.hovered && (
           <Cursor
-            x={hoveredPosition.x}
-            y={hoveredPosition.y}
-            color={hoveredEntity ? "var(--entity)" : "var(--position)"}
+            x={tiles.hovered.position.x}
+            y={tiles.hovered.position.y}
+            color={tiles.hovered.entity ? "var(--entity)" : "var(--position)"}
           />
         )}
         {/* {selectedPosition && (
@@ -66,21 +65,15 @@ export default Overlays
 const TargetingLine = () => {
   const { data } = useStateDesigner(game)
 
-  const selectedEntity = data.entities.find(
-    (e) => e.data.id === data.selectedEntity
-  )
+  const { selected, targeted } = data.ui.entities
 
-  const targetedEntity = data.entities.find(
-    (e) => e.data.id === data.targetedEntity
-  )
-
-  if (!selectedEntity || !targetedEntity) {
+  if (!selected || !targeted) {
     console.warn("Shouldn't be in Targeting Line!")
     return <path />
   }
 
-  const { x: x1, y: y1 } = selectedEntity.data.position
-  const { x: x2, y: y2 } = targetedEntity.data.position
+  const { x: x1, y: y1 } = selected.position
+  const { x: x2, y: y2 } = targeted.position
 
   return (
     <g>

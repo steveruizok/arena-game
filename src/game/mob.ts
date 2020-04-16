@@ -17,6 +17,7 @@ import {
   Blocking,
   Position,
   M,
+  Tile,
   Entity,
 } from "./types"
 
@@ -45,7 +46,8 @@ function createMob(position: Position, initialFacing: Direction) {
       },
       vision: {
         facing: initialFacing,
-        cells: [] as Position[],
+        tiles: [] as Tile[],
+        positions: [] as Position[],
         entities: [] as string[],
       },
     },
@@ -231,8 +233,8 @@ function createMob(position: Position, initialFacing: Direction) {
       setVision(data, payload: { cells: Position[]; entities: string[] }) {
         const { cells, entities } = payload
 
-        data.vision.cells = cells
-        data.vision.entities = entities
+        data.vision.positions = cells
+        // data.vision.entities = entities
       },
 
       // Game

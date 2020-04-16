@@ -1,15 +1,13 @@
 import React from "react"
-import game from "game"
+import game from "game/game"
 import { useStateDesigner } from "state-designer"
 
 export interface Props {}
 
 const Status: React.FC<Props> = () => {
-  const { data, whenIn } = useStateDesigner(game)
+  const { data, isIn, whenIn } = useStateDesigner(game)
 
-  const selectedEntity = data.selectedEntity
-    ? data.entities.find((e) => e.data.id === data.selectedEntity)
-    : undefined
+  const { selected } = data.ui.entities
 
   return (
     <div style={{ marginTop: 32 }}>

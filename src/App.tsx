@@ -1,5 +1,5 @@
 import React from "react"
-import game from "game"
+import game, { getNewEntity } from "game/game"
 import Grid from "./View/Grid"
 import EntityDetails from "./View/EntityDetails"
 import Status from "./View/Status"
@@ -23,10 +23,9 @@ const keyboardEvents: { [key: string]: string } = {
 const App = () => {
   // Spawn initial entities
   React.useEffect(() => {
-    game.send("ENTITY_SPAWNED", { position: { x: 5, y: 5 }, facing: "s" })
-    game.send("ENTITY_SPAWNED", { position: { x: 2, y: 3 }, facing: "n" })
-    game.send("ENTITY_SPAWNED", { position: { x: 5, y: 2 }, facing: "e" })
-    game.send("ENTITY_SPAWNED", { position: { x: 3, y: 7 }, facing: "n" })
+    game.send("ADDED_ENTITY", getNewEntity({ x: 5, y: 5, z: 0 }, "n"))
+    game.send("ADDED_ENTITY", getNewEntity({ x: 1, y: 1, z: 0 }, "s"))
+    game.send("ADDED_ENTITY", getNewEntity({ x: 5, y: 2, z: 0 }, "s"))
   }, [])
 
   // Set keyboard events

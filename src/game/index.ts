@@ -94,6 +94,7 @@ export default createStateDesigner({
             },
             CLICKED_ENTITY: [
               {
+                get: "entity",
                 if: "isSelectedEntity",
                 do: "clearSelectedEntity",
                 to: "selecting",
@@ -121,20 +122,25 @@ export default createStateDesigner({
                   get: "selectedEntity",
                   do: "setPath",
                 },
+                HOVERED_ENTITY: [
+                  {
+                    if: "isSelectedEntity",
+                    do: "clearPath",
+                  },
+                  {
+                    get: "selectedEntity",
+                    unless: "isSelectedEntity",
+                    do: "setPath",
+                  },
+                ],
                 CLICKED_ENTITY: [
                   { if: "isSelectedEntity", to: "idle" },
                   {
-                    unless: "isSelectedEntity",
-                    get: "selectedEntity",
-                    do: ["moveEntity", "clearPath"],
+                    to: "animating",
                   },
                 ],
                 CLICKED_CELL: {
                   to: "animating",
-                },
-                HOVERED_ENTITY: {
-                  if: "isSelectedEntity",
-                  do: "clearPath",
                 },
               },
             },
@@ -313,7 +319,8 @@ export default createStateDesigner({
         return false
       }
 
-      return selected.data.vision.entities.includes(hovered)
+      return false
+      // return selected.data.vision.entities.includes(hovered)
     },
   },
   actions: {
@@ -337,7 +344,13 @@ export default createStateDesigner({
       grid.clearUnwalkableCoords()
 
       for (let entity of data.entities) {
-        grid.addUnwalkableCoord(entity.data.position.x, entity.data.position.y)
+        console.log(entity.data.health.dead)
+        if (!entity.data.health.dead) {
+          grid.addUnwalkableCoord(
+            entity.data.position.x,
+            entity.data.position.y
+          )
+        }
       }
 
       const from = selectedEntity.data.position
@@ -489,7 +502,7 @@ export default createStateDesigner({
 
       const inRange: Position[] = []
 
-      for (let pos of entity.data.vision.cells) {
+      for (let pos of entity.data.vision.positions) {
         if (pos.x === position.x && pos.y === position.y) {
           continue
         }
