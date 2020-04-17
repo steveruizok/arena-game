@@ -1,5 +1,5 @@
 import React from "react"
-import game from "game/game"
+import game from "game"
 import styled from "@emotion/styled/macro"
 import { useStateDesigner } from "state-designer"
 
@@ -8,11 +8,11 @@ export interface Props {}
 const EntityDetails: React.FC<Props> = () => {
   const { data, whenIn } = useStateDesigner(game)
 
-  const { selected } = data.ui.entities
+  const selectedEntity = data.entities.get(data.ui.entities.selected || "")
 
-  if (selected === undefined) return <div />
+  if (selectedEntity === undefined) return <div />
 
-  const { id, position, health, attack, vision } = selected
+  const { id, position, health, attack, vision } = selectedEntity
 
   return (
     <Table>
@@ -96,8 +96,8 @@ const EntityDetails: React.FC<Props> = () => {
         </Row>
         <Row>
           <ul>
-            {vision.entities.map((id) => (
-              <li>{data.entities.get(id)?.id}</li>
+            {vision.entities.map((id, i) => (
+              <li key={i}>{data.entities.get(id)?.id}</li>
             ))}
           </ul>
         </Row>

@@ -1,5 +1,5 @@
 import React from "react"
-import game, { getNewEntity } from "game/game"
+import game, { getNewEntity } from "game"
 import Grid from "./View/Grid"
 import EntityDetails from "./View/EntityDetails"
 import Status from "./View/Status"

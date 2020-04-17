@@ -1,5 +1,5 @@
 import React from "react"
-import game from "game/game"
+import game from "game"
 import * as DS from "game/types"
 import { motion, useAnimation } from "framer-motion"
 import { useStateDesigner } from "state-designer"
@@ -20,11 +20,11 @@ export interface Props {
 const Entity: React.FC<Props> = ({ entity, children }) => {
   const { position, vision, health } = entity
 
-  const prevFacing = React.useRef(vision.facing)
-  const angle = React.useRef(directionAngles[vision.facing])
-
   const animation = useAnimation()
   const counterAnimation = useAnimation()
+
+  const prevFacing = React.useRef(vision.facing)
+  const angle = React.useRef(directionAngles[vision.facing])
 
   React.useEffect(() => {
     const { x, y } = position
@@ -66,9 +66,6 @@ const Entity: React.FC<Props> = ({ entity, children }) => {
 
   return (
     <motion.div
-      onMouseEnter={() => game.send("HOVERED_ENTITY", entity)}
-      onMouseLeave={() => game.send("UNHOVERED_ENTITY", entity)}
-      onClick={() => game.send("CLICKED_ENTITY", entity)}
       style={{
         position: "absolute",
         height: 31,
@@ -80,6 +77,9 @@ const Entity: React.FC<Props> = ({ entity, children }) => {
       animate={animation}
       transition={transition}
       onAnimationComplete={() => game.send("COMPLETED_STEP")}
+      onMouseEnter={() => game.send("HOVERED_ENTITY", entity)}
+      onMouseLeave={() => game.send("UNHOVERED_ENTITY", entity)}
+      onClick={() => game.send("CLICKED_ENTITY", entity)}
     >
       <motion.div
         style={{ position: "absolute", height: 31, width: 31 }}

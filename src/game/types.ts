@@ -1,21 +1,18 @@
 import { StateDesigner } from "state-designer"
-import createMob from "./mob"
+import createMob from "./services/ai/mob"
 
 export type Point = { x: 0; y: 0; z: 0 }
 
 export type Direction = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw"
 
 export interface Position {
+  id: string
   x: number
   y: number
   z: number
 }
 
-export interface Cell {
-  position: Position
-}
-
-export type AdjacentCells = Record<Direction, Cell | undefined>
+export type AdjacentCells = Record<Direction, Position | undefined>
 
 export type Entity = {
   id: string
@@ -37,8 +34,7 @@ export type Entity = {
     }
   }
   vision: {
-    tiles: Tile[]
-    positions: Position[]
+    positions: string[]
     entities: string[]
     facing: Direction
   }
@@ -79,6 +75,8 @@ export type RawShot = {
 export type Coord = { x: number; y: number; z: number }
 
 export type Tile = {
+  id: string
   position: Position
-  entity?: Entity
+  entity?: string
+  terrain: "none" | "wall"
 }

@@ -1,5 +1,29 @@
-import { Direction, Cell, Position, M, Entity } from "./types"
-import game from "./index"
+import { Direction, Position, M, Entity, Tile } from "./types"
+import { Data } from "game"
+
+export function positionToId(position: Partial<Position>): string {
+  return `${position.x}_${position.y}_${position.z}`
+}
+
+export function getTile(
+  data: Data,
+  position: Partial<Position> | string
+): Tile {
+  let p =
+    typeof position === "string"
+      ? position
+      : position.id || positionToId(position)
+
+  return data.map.get(p) as Tile
+}
+
+export function getPosition(
+  data: Data,
+  position: Partial<Position> | string
+): Position {
+  let t = getTile(data, position)
+  return t.position
+}
 
 export const directions: Direction[] = [
   "n",
@@ -22,11 +46,6 @@ const turnDistances = directions.reduce((acc, cur) => {
 export const directionAngles = Object.fromEntries(
   directions.map((d, index) => [d, index * 45])
 )
-
-export function getCell(position: Position): Cell | undefined {
-  const { x, y, z } = position
-  return game.data.grid[y] && game.data.grid[y][x]
-}
 
 export function offsetPosition(position: Position, direction: Direction) {
   let { x, y, z } = position
@@ -74,14 +93,6 @@ export const directionOffsets = {
   sw: [1, -1],
   w: [0, -1],
   nw: [-1, -1],
-}
-
-export function getEntityAtPosition(position: Position): M<Entity> | undefined {
-  const { x, y } = position
-  const entities = game.data.entities
-  return entities.find(
-    (e) => e.data.position.y === y && e.data.position.x === x
-  )
 }
 
 export function getOffsetAngle(from: Position, to: Position) {

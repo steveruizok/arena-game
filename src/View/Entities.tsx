@@ -1,5 +1,5 @@
 import React from "react"
-import game from "game/game"
+import game from "game"
 import Entity from "./Entity"
 import { useStateDesigner } from "state-designer"
 

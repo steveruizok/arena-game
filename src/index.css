@@ -46,10 +46,10 @@
 :root {
   --text: rgb(238, 232, 220);
   --surface: rgba(238, 232, 220, 0.05);
-  --highlight: rgba(238, 232, 220, 0.1);
+  --highlight: rgba(238, 232, 220, 0.15);
   --active: rgba(238, 232, 220, 0.22);
   --indent: rgba(0, 0, 0, 0.1);
-  --shadow: rgba(0, 0, 0, 0.5);
+  --shadow: rgba(0, 0, 0, 0.6);
   --outline: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
   --damage: rgb(215, 71, 111);
   --range: rgba(215, 71, 111, 0.125);

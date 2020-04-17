@@ -3,8 +3,8 @@ import Cells from "./Cells"
 import Entities from "./Entities"
 import Overlays from "./Overlays"
 import Shots from "./Shots"
-import game from "game/game"
-import find from "lodash-es/find"
+import Iso from "./Iso"
+import game from "game"
 import styled from "@emotion/styled"
 import { useStateDesigner } from "state-designer"
 
@@ -21,6 +21,7 @@ const Grid: React.FC<Props> = ({ children }) => {
         <Shots />
         <Entities />
       </Board>
+      <Iso />
       <Buttons>
         <button onClick={() => send("ADVANCED_TURN")}>Next Turn</button>
       </Buttons>
@@ -69,19 +70,26 @@ const Board = styled.div({
 
 const Buttons = styled.div`
   display: grid;
-  grid-auto-columns: fit-content(128px);
+  grid-auto-columns: 1fr;
   grid-template-rows: 32px;
-  grid-column-gap: 16px;
+  grid-gap: 4px;
   grid-auto-flow: column;
 
   > button {
     font-weight: bold;
     background: none;
     background-color: var(--surface);
-    border: 1px solid #fff;
-    border-radius: 8px;
+    border: none;
+    border-top: 1px solid var(--highlight);
+    border-right: 1px solid var(--shadow);
+    border-bottom: 1px solid var(--shadow);
+    border-left: 1px solid var(--highlight);
     padding: 0px 12px 2px 12px;
     outline: none;
+  }
+
+  > button:hover {
+    background-color: var(--highlight);
   }
 
   > button:active {

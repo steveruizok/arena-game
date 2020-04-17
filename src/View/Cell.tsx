@@ -1,15 +1,14 @@
 import React from "react"
-import game from "game/game"
+import game from "game"
 import { Position, Tile } from "game/types"
 import { directionAngles } from "game/utils"
 
 export interface Props {
   tile: Tile
-  visible: boolean
 }
 
-const Cell: React.FC<Props> = ({ tile, visible, children }) => {
-  const { position } = tile
+const Cell: React.FC<Props> = ({ tile, children }) => {
+  const { position, terrain } = tile
   const { x, y } = position
 
   return (
@@ -29,9 +28,8 @@ const Cell: React.FC<Props> = ({ tile, visible, children }) => {
         left: x * 32,
         width: 32,
         height: 32,
-        backgroundColor: visible
-          ? "rgba(255,255,255,.2)"
-          : "rgba(255,255,255,.05)",
+        backgroundColor:
+          terrain === "none" ? "rgb(77, 79, 80)" : "rgb(77, 223, 234)",
       }}
     ></div>
   )

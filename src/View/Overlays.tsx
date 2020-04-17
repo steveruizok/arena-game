@@ -1,6 +1,6 @@
 import React from "react"
 import Cell from "./Cell"
-import game from "game/game"
+import game from "game"
 import find from "lodash-es/find"
 import styled from "@emotion/styled"
 import { motion } from "framer-motion"
@@ -21,9 +21,24 @@ const Overlays: React.FC<Props> = ({ children }) => {
   const { data, isIn } = useStateDesigner(game)
   const { tiles, entities } = data.ui
 
+  const selectedEntity = data.entities.get(entities.selected || "")
+
   return (
     <OverlaysContainer>
       <svg width={320} height={320} viewBox={"0 0 320 320"}>
+        {selectedEntity &&
+          Array.from(data.map.values()).map((tile, i) => (
+            <CellHighlight
+              key={i}
+              x={tile.position.x}
+              y={tile.position.y}
+              color={
+                selectedEntity.vision.positions.includes(tile.id)
+                  ? "var(--highlight)"
+                  : "var(--indent)"
+              }
+            />
+          ))}
         {tiles.inPath.map((tile, i) => (
           <CellHighlight
             key={i}
@@ -48,13 +63,13 @@ const Overlays: React.FC<Props> = ({ children }) => {
             color={tiles.hovered.entity ? "var(--entity)" : "var(--position)"}
           />
         )}
-        {/* {selectedPosition && (
+        {selectedEntity && (
           <Cursor
-            x={selectedPosition.x}
-            y={selectedPosition.y}
+            x={selectedEntity.position.x}
+            y={selectedEntity.position.y}
             color={"var(--selected)"}
           />
-        )} */}
+        )}
       </svg>
     </OverlaysContainer>
   )
@@ -65,7 +80,8 @@ export default Overlays
 const TargetingLine = () => {
   const { data } = useStateDesigner(game)
 
-  const { selected, targeted } = data.ui.entities
+  const selected = data.entities.get(data.ui.entities.selected || "")
+  const targeted = data.entities.get(data.ui.entities.targeted || "")
 
   if (!selected || !targeted) {
     console.warn("Shouldn't be in Targeting Line!")

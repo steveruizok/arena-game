@@ -1,81 +1,109 @@
 import { createStateDesigner } from "state-designer"
 import range from "lodash-es/range"
-import pull from "lodash-es/pull"
-import last from "lodash-es/last"
-import { castDraft } from "immer"
-
-import shots from "./shots"
-import createMob from "./mob"
-import Pathfinding, { Grid, GridType } from "./services/pathfinding"
-import { Entity, Cell, M, Position, Direction } from "./types"
+import uniqueId from "lodash-es/uniqueId"
+import { castRay } from "game/services/raycast"
+import { setEntityVision } from "game/services/fov"
+import Pathfinding, { Grid, GridType } from "game/services/pathfinding"
+import { Position, Tile, Entity, Direction } from "game/types"
+import shots from "game/shots"
 import {
   getOffsetDirection,
   getOffsetAngle,
   getTurnDistance,
   getOffsetFacing,
   directionAngles,
+  positionToId,
+  getTile,
+  getPosition,
   getDistanceBetweenPositions,
   wrap,
-} from "./utils"
+} from "game/utils"
 
-const cells: Cell[][] = range(10).map((y) =>
-  range(10).map((x) => ({ position: { y, x, z: 0 } }))
-)
+// Initial data
 
-const grid = new Grid({
-  tiles: cells.map((row) => row.map(() => 1)),
+const MAP_SIZE = {
+  x: 10,
+  y: 10,
+  z: 1,
+}
+
+export const entities = new Map<string, Entity>([])
+
+export const map = new Map<string, Tile>([])
+
+const pathTiles = range(MAP_SIZE.y).map((y) => range(MAP_SIZE.x).map((p) => 1))
+
+for (let z = 0; z < MAP_SIZE.z; z++) {
+  for (let y = 0; y < MAP_SIZE.y; y++) {
+    for (let x = 0; x < MAP_SIZE.x; x++) {
+      const id = positionToId({ x, y, z })
+      const position = { id, x, y, z }
+      const terrain = Math.random() > 0.9 ? "wall" : "none"
+
+      if (terrain === "wall") {
+        pathTiles[y][x] = 0
+      }
+
+      map.set(id, {
+        id,
+        position,
+        terrain,
+      })
+    }
+  }
+}
+
+const pathGrid = new Grid({
+  tiles: pathTiles,
   walkableTiles: [1],
   type: GridType.intercardinal,
 })
 
-export default createStateDesigner({
-  data: {
-    turn: 0,
-    activeEntity: 0,
-    entities: [] as M<Entity>[],
-    grid: cells as Cell[][],
-    path: [] as Position[],
-    inRange: [] as Position[],
-    hoveredPosition: undefined as Position | undefined,
-    hoveredEntity: undefined as string | undefined,
-    selectedEntity: undefined as string | undefined,
-    targetedEntity: undefined as string | undefined,
+// Game machine
+
+const data = {
+  map,
+  entities,
+  ui: {
+    entities: {
+      hovered: undefined as string | undefined,
+      selected: undefined as string | undefined,
+      targeted: undefined as string | undefined,
+    },
+    tiles: {
+      hovered: undefined as Tile | undefined,
+      inRange: [] as Tile[],
+      inPath: [] as Tile[],
+    },
   },
+}
+
+export type Data = typeof data
+
+const state = createStateDesigner({
+  data,
   on: {
-    ADVANCED_TURN: [
-      {
-        do: ["runEntityTurn", (data) => data.activeEntity++],
-      },
-      {
-        do: "updateVision",
-        wait: 0.025,
-      },
-      {
-        if: "movingEntitiesRemain",
-        send: "ADVANCED_TURN",
-        wait: 0.025,
-      },
-      {
-        unless: "movingEntitiesRemain",
-        do: "finishTurn",
-        wait: 0.025,
-      },
+    ADDED_ENTITY: {
+      get: "tileFromEntity",
+      do: ["addEntityToTile", "addEntityToEntities"],
+    },
+    REMOVED_ENTITY: {
+      get: "tileFromEntity",
+      do: ["removeEntityFromTile", "removeEntityFromEntities"],
+    },
+    HOVERED_TILE: { get: "tileFromTile", do: "setHoveredTile" },
+    HOVERED_ENTITY: [
+      { get: "entityFromEntity", do: "setHoveredEntity" },
+      { get: "tileFromEntity", do: "setHoveredTile" },
     ],
-    ENTITY_SPAWNED: { get: "newMob", do: ["addEntity", "updateVision"] },
-    HOVERED_CELL: "setHoveredPosition",
-    HOVERED_ENTITY: "setHoveredEntity",
     UNHOVERED_ENTITY: "clearHoveredEntity",
   },
   initial: "selecting",
   states: {
     selecting: {
-      onEnter: "clearSelectedEntity",
       on: {
-        COMMAND_CLICKED_CELL: {
-          do: "spawnMob",
-        },
         CLICKED_ENTITY: {
-          get: "entity",
+          get: "entityFromEntity",
           unless: "entityIsDead",
           do: "setSelectedEntity",
           to: "selected",
@@ -83,24 +111,29 @@ export default createStateDesigner({
       },
     },
     selected: {
-      onEnter: "updateVision",
+      on: {
+        TOGGLED_TURN: { to: "turning" },
+        TOGGLED_MOVE: { to: "moving" },
+        TOGGLED_AIM: { to: "aiming" },
+      },
+      onExit: "clearSelectedEntity",
+      onEnter: {
+        get: "selectedEntity",
+        do: "setEntityVision",
+      },
       initial: "idle",
       states: {
         idle: {
           on: {
-            CANCELLED: {
-              do: "clearSelectedEntity",
-              to: "selecting",
-            },
+            CANCELLED: { to: "selecting" },
             CLICKED_ENTITY: [
               {
-                get: "entity",
-                if: "isSelectedEntity",
-                do: "clearSelectedEntity",
+                get: "entityFromEntity",
+                if: "entityIsSelected",
                 to: "selecting",
               },
               {
-                get: "entity",
+                get: "entityFromEntity",
                 unless: "entityIsDead",
                 do: "setSelectedEntity",
                 to: "selected",
@@ -110,44 +143,45 @@ export default createStateDesigner({
         },
         moving: {
           initial: "selecting",
-          onEnter: {
-            get: "selectedEntity",
-            do: "setPath",
-          },
           onExit: "clearPath",
           states: {
             selecting: {
+              onEnter: {
+                get: "selectedEntity",
+                do: "setPathToHoveredTile",
+              },
               on: {
-                HOVERED_CELL: {
+                HOVERED_TILE: {
                   get: "selectedEntity",
-                  do: "setPath",
+                  do: "setPathToHoveredTile",
+                },
+                CLICKED_TILE: {
+                  to: "animating",
                 },
                 HOVERED_ENTITY: [
                   {
-                    if: "isSelectedEntity",
+                    get: "hoveredEntity",
+                    if: "entityIsSelected",
                     do: "clearPath",
                   },
                   {
                     get: "selectedEntity",
-                    unless: "isSelectedEntity",
-                    do: "setPath",
+                    unless: ["entityIsDead", "entityIsSelected"],
+                    do: "setPathToHoveredTile",
                   },
                 ],
                 CLICKED_ENTITY: [
-                  { if: "isSelectedEntity", to: "idle" },
+                  { if: "entityIsSelected", to: "idle" },
                   {
                     to: "animating",
                   },
                 ],
-                CLICKED_CELL: {
-                  to: "animating",
-                },
               },
             },
             animating: {
               onEnter: {
                 get: "selectedEntity",
-                do: ["advanceAlongPath", "updateVision"],
+                do: ["advanceAlongPath", "setEntityVision"],
               },
               on: {
                 CANCELLED: { to: "selecting" },
@@ -155,7 +189,7 @@ export default createStateDesigner({
                   { if: "pathIsEmpty", to: "selecting" },
                   {
                     get: "selectedEntity",
-                    do: ["advanceAlongPath", "updateVision"],
+                    do: ["advanceAlongPath", "setEntityVision"],
                   },
                 ],
               },
@@ -170,35 +204,44 @@ export default createStateDesigner({
           },
         },
         turning: {
+          onEnter: {
+            get: "selectedEntity",
+            do: ["turnEntityToHoveredTile", "setEntityVision"],
+          },
           on: {
-            HOVERED_CELL: {
-              get: "selectedEntity",
-              do: ["setTurnDirection", "updateVision"],
-            },
-            CLICKED_BOARD: { to: "idle" },
             CANCELLED: { to: "idle" },
-            TOGGLED_TURN: { to: "idle" },
+            CLICKED_BOARD: { to: "idle" },
+            HOVERED_TILE: {
+              get: "selectedEntity",
+              do: ["turnEntityToHoveredTile", "setEntityVision"],
+            },
           },
         },
         aiming: {
           initial: "selecting",
-          onExit: "clearInRange",
+          onExit: "clearTilesInRange",
           onEnter: [
-            { get: "selectedEntity", do: "setInRange" },
+            {
+              get: "selectedEntity",
+              do: "setTilesInRangeOfEntity",
+            },
             {
               get: "hoveredEntity",
-              if: ["entityExists", "hoveredEntityIsVisibleToSelectedEntity"],
+              if: [
+                "hoveredEntityIsVisibleToSelectedEntity",
+                "hoveredEntityIsInRangeOfSelectedEntity",
+              ],
               do: "setTargetedEntity",
               to: "selected",
             },
           ],
           states: {
             selecting: {
-              onEnter: () => {},
+              onEnter: { get: "selectedEntity", do: "setEntityVision" },
               on: {
                 HOVERED_ENTITY: {
                   get: "hoveredEntity",
-                  unless: ["isSelectedEntity", "entityIsDead"],
+                  unless: ["entityIsSelected", "entityIsDead"],
                   if: [
                     "hoveredEntityIsVisibleToSelectedEntity",
                     "hoveredEntityIsInRangeOfSelectedEntity",
@@ -210,7 +253,7 @@ export default createStateDesigner({
             },
             selected: {
               on: {
-                HOVERED_CELL: {
+                HOVERED_TILE: {
                   do: "clearTargetedEntity",
                   to: "selecting",
                 },
@@ -223,9 +266,13 @@ export default createStateDesigner({
                     do: "shootEntity",
                   },
                   {
-                    get: "entity",
-                    if: "entityIsDead",
-                    do: "clearTargetedEntity",
+                    get: "entityFromEntity",
+                    unless: "entityIsDead",
+                    break: true,
+                  },
+                  {
+                    get: "selectedEntity",
+                    do: ["setEntityVision", "clearTargetedEntity"],
                     to: "selecting",
                   },
                 ],
@@ -238,215 +285,142 @@ export default createStateDesigner({
           },
         },
       },
-      on: {
-        TOGGLED_TURN: { to: "turning" },
-        TOGGLED_MOVE: { to: "moving" },
-        TOGGLED_AIM: { to: "aiming" },
-      },
     },
   },
   results: {
-    newMob(data, options: { position: Position; facing: Direction }) {
-      const { position, facing } = options
-      const entity = createMob(position, facing)
-      return entity
+    // Tiles
+    tileFromEntity(data, entity: Entity) {
+      return data.map.get(positionToId(entity.position))
     },
-    entity(data, id) {
-      return data.entities.find((e) => e.data.id === id)
+    tileFromTile(data, tile: Tile) {
+      return data.map.get(tile.id)
     },
-    entityInPosition(data, position: Position) {
-      const { x, y } = position
-      return data.entities.find(
-        (e) => e.data.position.x === x && e.data.position.y === y
-      )
+    // Entities
+    entityFromId(data, id: string) {
+      return data.entities.get(id)
     },
-    hoveredEntity(data) {
-      return data.entities.find((m) => m.data.id === data.hoveredEntity)
+    entityFromEntity(data, entity: Entity) {
+      return data.entities.get(entity.id)
     },
     selectedEntity(data) {
-      return data.entities.find((m) => m.data.id === data.selectedEntity)
+      return data.entities.get(data.ui.entities.selected || "")
+    },
+    hoveredEntity(data) {
+      return data.entities.get(data.ui.entities.hovered || "")
+    },
+    targetedEntity(data) {
+      return data.entities.get(data.ui.entities.targeted || "")
     },
   },
   conditions: {
-    movingEntitiesRemain(data) {
-      return data.activeEntity <= data.entities.length - 1
+    // Tiles
+    tileIsEmpty(data, _, tile: Tile) {
+      return tile.entity === undefined
+    },
+    // Entities
+    entityIsDead(data, _, entity: Entity) {
+      return entity.health.dead === true
+    },
+    entityIsSelected(data, _, entity: Entity) {
+      const { selected } = data.ui.entities
+      return selected === entity.id
     },
     pathIsEmpty(data) {
-      return data.path.length === 0
+      return data.ui.tiles.inPath.length === 0
     },
-    entityIsDead(data, id, entity: M<Entity>) {
-      return entity.data.health.dead
-    },
-    isSelectedEntity(data, id: string) {
-      return id === data.selectedEntity
-    },
-    positionHasEntity(data, _, entityInPosition?: M<Entity>) {
-      return entityInPosition !== undefined
-    },
-    entityExists(data, _, entity: M<Entity>) {
-      return entity !== undefined
+    // Targeting
+    hoveredEntityIsVisibleToSelectedEntity(data) {
+      const selected = data.entities.get(data.ui.entities.selected || "")
+      const hovered = data.entities.get(data.ui.entities.hovered || "")
+
+      if (!(selected && hovered)) return false
+
+      return selected.vision.entities.includes(hovered.id)
     },
     hoveredEntityIsInRangeOfSelectedEntity(data) {
-      const selected = data.entities.find(
-        (m) => m.data.id === data.selectedEntity
-      )
+      const selected = data.entities.get(data.ui.entities.selected || "")
+      const hovered = data.entities.get(data.ui.entities.hovered || "")
 
-      const hovered = data.entities.find(
-        (m) => m.data.id === data.hoveredEntity
-      )
-
-      if (!hovered || !selected) {
-        console.error("No hovered/selected!")
-        return false
-      }
+      if (!(selected && hovered)) return false
 
       return (
-        getDistanceBetweenPositions(
-          selected.data.position,
-          hovered.data.position
-        ) < selected.data.attack.ranged.range
+        getDistanceBetweenPositions(selected.position, hovered.position) <
+        selected.attack.ranged.range
       )
-    },
-    hoveredEntityIsVisibleToSelectedEntity(data) {
-      const selected = data.entities.find(
-        (m) => m.data.id === data.selectedEntity
-      )
-
-      const hovered = data.hoveredEntity
-
-      if (!hovered || !selected) {
-        console.error("No hovered/selected!")
-        return false
-      }
-
-      return false
-      // return selected.data.vision.entities.includes(hovered)
     },
   },
   actions: {
-    // MISC
-    setHoveredPosition(data, position: Position) {
-      data.hoveredPosition = position
+    // Tiles
+    addEntityToTile(data, entity: Entity, tile: Tile) {
+      tile.entity = entity.id
     },
-    setHoveredEntity(data, id: string) {
-      data.hoveredEntity = id
-
-      const hovered = data.entities.find((m) => m.data.id === id)
-
-      data.hoveredPosition = hovered?.data.position
+    removeEntityFromTile(data, entity: Entity, tile: Tile) {
+      tile.entity = undefined
+      pathGrid.removeUnwalkableCoord(tile.position.x, tile.position.y)
     },
-    clearHoveredEntity(data) {
-      data.hoveredEntity = undefined
+    setHoveredTile(data, _, tile: Tile) {
+      data.ui.tiles.hovered = tile
     },
+    clearHoveredTile(data) {
+      data.ui.entities.hovered = undefined
+    },
+    // Entities
+    addEntityToEntities(data, entity: Entity) {
+      data.entities.set(entity.id, entity)
+      pathGrid.addUnwalkableCoord(entity.position.x, entity.position.y)
+    },
+    removeEntityFromEntities(data, entity: Entity) {
+      data.entities.delete(entity.id)
+      pathGrid.removeUnwalkableCoord(entity.position.x, entity.position.y)
+    },
+    // Moving
+    setPathToHoveredTile(data, _, entity: Entity) {
+      const hovered = data.ui.tiles.hovered || ""
 
-    // PATHFINDING
-    setPath(data, _, selectedEntity: M<Entity>) {
-      grid.clearUnwalkableCoords()
+      if (!hovered) return
 
-      for (let entity of data.entities) {
-        console.log(entity.data.health.dead)
-        if (!entity.data.health.dead) {
-          grid.addUnwalkableCoord(
-            entity.data.position.x,
-            entity.data.position.y
-          )
-        }
-      }
-
-      const from = selectedEntity.data.position
-      const to = data.hoveredPosition
+      const from = entity.position
+      const to = hovered.position
 
       if (to === undefined) {
         console.error("Missing hoveredPosition!")
         return
       }
 
-      const path = Pathfinding.findPathSync(grid, from, to)
+      const positions = Pathfinding.findPathSync(pathGrid, from, to)
+      const path: Tile[] = []
 
-      data.path = path ? path.slice(1) : []
+      if (positions !== null) {
+        for (let i = 1; i < positions.length; i++) {
+          const tile = getTile(data, positions[i])
+
+          if (tile === undefined) {
+            throw new Error("Couldn't find that tile!")
+          } else {
+            path.push(tile)
+          }
+        }
+      }
+
+      data.ui.tiles.inPath = path
     },
     clearPath(data) {
-      data.path = []
+      data.ui.tiles.inPath = []
     },
+    advanceAlongPath(data, _, entity: Entity) {
+      const { inPath } = data.ui.tiles
 
-    // ENTITIES
-    spawnMob(data, position: Position) {
-      const entity = createMob(position, "n")
-      data.entities.push(entity)
-    },
-    addEntity(data, _, entity: M<Entity>) {
-      data.entities.push(entity)
-    },
-    removeEntity(data, id: string) {
-      const index = data.entities.findIndex((e) => e.data.id === id)
-      data.entities.splice(index, 1)
-    },
-    updateVision(data) {
-      for (let entity of data.entities) {
-        const { position, vision, id } = entity.data
-
-        const cells: Position[] = []
-        const entities: string[] = []
-
-        const facingAngle = directionAngles[vision.facing]
-
-        for (let row of data.grid) {
-          for (let cell of row) {
-            if (
-              cell.position.x === position.x &&
-              cell.position.y === position.y
-            ) {
-              continue
-            }
-            const offsetAngle = getOffsetAngle(position, cell.position)
-            const theta = wrap(facingAngle - offsetAngle - 180, 0, 360) - 180
-
-            if (Math.abs(theta) < 64) {
-              cells.push({ ...cell.position })
-            }
-          }
-        }
-
-        for (let entity of data.entities) {
-          if (entity.data.id === id) {
-            continue
-          }
-          const offsetAngle = getOffsetAngle(position, entity.data.position)
-          const theta = wrap(facingAngle - offsetAngle - 180, 0, 360) - 180
-
-          if (Math.abs(theta) < 64) {
-            entities.push(entity.data.id)
-          }
-        }
-
-        entity.send("UPDATED_VISION", { cells, entities })
-      }
-    },
-
-    // SELECTED ENTITY
-    setSelectedEntity(data, id: string) {
-      data.selectedEntity = id
-      const selected = data.entities.find((m) => m.data.id === id)
-    },
-    clearSelectedEntity(data) {
-      data.selectedEntity = undefined
-    },
-
-    // MOVEMENT
-    advanceAlongPath(data, _, selectedEntity: M<Entity>) {
-      let next = data.path[0]
+      let next = inPath[0]
 
       if (next === undefined) {
         console.error("Path is empty! Can't advance.")
         return
       }
 
-      const offsetDirection = getOffsetDirection(
-        selectedEntity.data.position,
-        next
-      )
+      const offsetDirection = getOffsetDirection(entity.position, next.position)
+
       const turnDistance = getTurnDistance(
-        selectedEntity.data.vision.facing,
+        entity.vision.facing,
         offsetDirection
       )
 
@@ -462,99 +436,147 @@ export default createStateDesigner({
       if (absTurnDistance <= 1) {
         if (absTurnDistance === 1) {
           const nextDirection = getOffsetFacing(
-            selectedEntity.data.vision.facing,
+            entity.vision.facing,
             turnDistance
           )
-          selectedEntity.send("TURNED_TO", nextDirection)
+          entity.vision.facing = nextDirection
         }
-        selectedEntity.send("MOVED_TO", { ...data.path.shift() })
+
+        // Move entity between positions
+        const to = inPath.shift()
+        const from = data.map.get(positionToId(entity.position))
+
+        if (to && from) {
+          to.entity = entity.id
+          from.entity = undefined
+
+          const pos = getPosition(data, to.position)
+
+          entity.position = pos
+
+          pathGrid.addUnwalkableCoord(to.position.x, to.position.y)
+          pathGrid.removeUnwalkableCoord(from.position.x, from.position.y)
+        } else {
+          throw new Error("Can't move entity — to or from is missing!")
+        }
       } else {
         const nextDirection = getOffsetFacing(
-          selectedEntity.data.vision.facing,
+          entity.vision.facing,
           turnDistance > 1 ? 1 : -1
         )
-        selectedEntity.send("TURNED_TO", nextDirection)
+        entity.vision.facing = nextDirection
       }
     },
-    moveEntity(data, position: Position, selectedEntity: M<Entity>) {
-      selectedEntity.send("MOVED_TO", { ...position })
+    // Turning
+    turnEntityToHoveredTile(data, _: Tile, entity: Entity) {
+      const hovered = data.ui.tiles.hovered || ""
+
+      if (!hovered) return
+
+      const direction = getOffsetDirection(entity.position, hovered.position)
+
+      entity.vision.facing = direction
     },
-
-    // TURNING
-    setTurnDirection(data, position: Position, selectedEntity: M<Entity>) {
-      const direction = getOffsetDirection(
-        selectedEntity.data.position,
-        position
-      )
-
-      selectedEntity.send("TURNED_TO", direction)
-    },
-
-    // AIMING
-    setTargetedEntity(data, _, entity: M<Entity>) {
-      data.targetedEntity = entity.data.id
-    },
-    clearTargetedEntity(data) {
-      data.targetedEntity = undefined
-    },
-    setInRange(data, _, entity: M<Entity>) {
-      const { position, attack } = entity.data
-
-      const inRange: Position[] = []
-
-      for (let pos of entity.data.vision.positions) {
-        if (pos.x === position.x && pos.y === position.y) {
-          continue
-        }
-        const distance = getDistanceBetweenPositions(position, pos)
-
-        if (distance < attack.ranged.range) {
-          inRange.push(pos)
-        }
-      }
-
-      data.inRange = inRange
-    },
-    clearInRange(data) {
-      data.inRange = []
-    },
+    // Vision
+    setEntityVision,
+    // Combat
     shootEntity(data) {
-      const selectedEntity = data.entities.find(
-        (m) => m.data.id === data.selectedEntity
-      )
-      const targetedEntity = data.entities.find(
-        (m) => m.data.id === data.targetedEntity
-      )
+      const selected = data.entities.get(data.ui.entities.selected || "")
+      const targeted = data.entities.get(data.ui.entities.targeted || "")
 
-      if (!selectedEntity || !targetedEntity) {
-        console.warn("Missing some entities here")
-        return
-      }
+      if (!(selected && targeted)) return false
 
-      const { ranged } = selectedEntity.data.attack
+      const { ranged } = selected.attack
 
       const didHit = Math.random() < ranged.accuracy
 
-      const from = selectedEntity.data.position
-      const to = targetedEntity.data.position
-
-      shots.send("FIRED_SHOT", { from, to })
-
       if (didHit) {
-        setTimeout(() => {
-          selectedEntity.send("SHOT_RANGED", 1)
-          targetedEntity.send("RECEIVED_DAMAGE", ranged.damage)
-        }, 500)
+        targeted.health.current -= ranged.damage
+
+        if (targeted.health.current <= 0) {
+          targeted.health.dead = true
+          data.ui.entities.targeted = undefined
+          pathGrid.removeUnwalkableCoord(
+            targeted.position.x,
+            targeted.position.y
+          )
+        }
       }
     },
-
-    // GAME TURN
-    finishTurn(data) {
-      data.activeEntity = 0
-      data.turn++
+    // UI
+    setSelectedEntity(data, entity: Entity) {
+      data.ui.entities.selected = entity.id
     },
-    runEntityTurn(data) {
-      data.entities[data.activeEntity].send("TURN")
+    clearSelectedEntity(data) {
+      data.ui.entities.selected = undefined
+    },
+    setHoveredEntity(data, entity: Entity) {
+      data.ui.entities.hovered = entity.id
+    },
+    clearHoveredEntity(data) {
+      data.ui.entities.hovered = undefined
+    },
+    setTargetedEntity(data, _, entity: Entity) {
+      data.ui.entities.targeted = entity.id
+    },
+    clearTargetedEntity(data, _, entity: Entity) {
+      data.ui.entities.targeted = undefined
+    },
+    setTilesInRangeOfEntity(data, _, entity: Entity) {
+      const { position, attack } = entity
+
+      const tilesInRange: Tile[] = []
+
+      entity.vision.positions.forEach((vPos) => {
+        const tile = data.map.get(vPos)
+        if (tile) {
+          const distance = getDistanceBetweenPositions(position, tile.position)
+
+          if (distance < attack.ranged.range) {
+            tilesInRange.push(tile)
+          }
+        }
+      })
+
+      data.ui.tiles.inRange = tilesInRange
+    },
+    clearTilesInRange(data) {
+      data.ui.tiles.inRange = []
     },
   },
 })
+
+export function getNewEntity(
+  position: Partial<Position>,
+  initialFacing: Direction
+): Entity {
+  const pos = getPosition(data, position)
+
+  return {
+    id: uniqueId("entity_"),
+    position: pos,
+    health: {
+      current: 10,
+      max: 10,
+      dead: false,
+    },
+    attack: {
+      melee: {
+        damage: 3,
+        accuracy: 0.85,
+      },
+      ranged: {
+        damage: 3,
+        range: 6,
+        accuracy: 0.85,
+      },
+    },
+    vision: {
+      facing: initialFacing,
+      positions: [] as string[],
+      entities: [] as string[],
+    },
+  }
+}
+
+export default state
