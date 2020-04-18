@@ -1,12 +1,12 @@
 import React from "react"
-import Cells from "./Cells"
 import Entities from "./Entities"
 import Overlays from "./Overlays"
+import Vision from "./Vision"
 import Shots from "./Shots"
-import Iso from "./Iso"
 import game from "game"
 import styled from "@emotion/styled"
 import { useStateDesigner } from "state-designer"
+import config from "game/config"
 
 export interface Props {}
 
@@ -15,13 +15,20 @@ const Grid: React.FC<Props> = ({ children }) => {
 
   return (
     <Container>
-      <Board onClick={() => send("CLICKED_BOARD")}>
-        <Cells />
+      <Board
+        onClick={(e) => {
+          if (e.metaKey) {
+            game.send("COMMAND_CLICKED_BOARD")
+          } else {
+            send("CLICKED_BOARD")
+          }
+        }}
+      >
         <Overlays />
         <Shots />
         <Entities />
       </Board>
-      <Iso />
+      <Vision />
       <Buttons>
         <button onClick={() => send("ADVANCED_TURN")}>Next Turn</button>
       </Buttons>
@@ -54,18 +61,21 @@ const Grid: React.FC<Props> = ({ children }) => {
 
 export default Grid
 
+const { map } = config
+
 const Container = styled.div`
   display: grid;
-  grid-template-columns: 320px;
-  grid-template-rows: 320px;
+  grid-template-columns: ${map.size.x * 32}px;
+  grid-template-rows: auto;
   grid-auto-rows: fit-content(32px);
   grid-row-gap: 16px;
+  cursor: crosshair;
 `
 
 const Board = styled.div({
   position: "relative",
-  height: 320,
-  width: 320,
+  height: map.size.y * 32,
+  width: map.size.x * 32,
 })
 
 const Buttons = styled.div`

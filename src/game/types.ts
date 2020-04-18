@@ -1,15 +1,16 @@
 import { StateDesigner } from "state-designer"
 import createMob from "./services/ai/mob"
 
-export type Point = { x: 0; y: 0; z: 0 }
-
 export type Direction = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw"
 
-export interface Position {
-  id: string
+export type Point = {
   x: number
   y: number
   z: number
+}
+
+export interface Position extends Point {
+  id: string
 }
 
 export type AdjacentCells = Record<Direction, Position | undefined>
@@ -80,3 +81,18 @@ export type Tile = {
   entity?: string
   terrain: "none" | "wall"
 }
+
+export type BlockerInView = {
+  angle: number
+  distance: number
+  type: "wall" | "entity" | "corpse"
+}
+
+export type HitTestEvent<T> = {
+  point: Point
+  angle: number
+  distance: number
+  memo: T
+}
+
+export type HitTest<T> = (event: HitTestEvent<T>) => boolean

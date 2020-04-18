@@ -9,7 +9,6 @@ const Container = styled.div({
   display: "grid",
   margin: 16,
   gridTemplateColumns: "320px auto",
-  gridTemplateRows: "600px auto",
   gridGap: 16,
 })
 
@@ -46,9 +45,13 @@ const App = () => {
 
   return (
     <Container>
-      <Grid />
-      <EntityDetails />
-      <Status />
+      <div>
+        <Grid />
+        <Status />
+      </div>
+      <div>
+        <EntityDetails />
+      </div>
     </Container>
   )
 }

@@ -1,11 +1,9 @@
 import { createStateDesigner } from "state-designer"
 import range from "lodash-es/range"
 import uniqueId from "lodash-es/uniqueId"
-import { castRay } from "game/services/raycast"
 import { setEntityVision } from "game/services/fov"
 import Pathfinding, { Grid, GridType } from "game/services/pathfinding"
-import { Position, Tile, Entity, Direction } from "game/types"
-import shots from "game/shots"
+import { Position, Tile, Entity, Direction, BlockerInView } from "game/types"
 import {
   getOffsetDirection,
   getOffsetAngle,
@@ -18,27 +16,32 @@ import {
   getDistanceBetweenPositions,
   wrap,
 } from "game/utils"
+import config from "game/config"
 
 // Initial data
-
-const MAP_SIZE = {
-  x: 10,
-  y: 10,
-  z: 1,
-}
 
 export const entities = new Map<string, Entity>([])
 
 export const map = new Map<string, Tile>([])
 
-const pathTiles = range(MAP_SIZE.y).map((y) => range(MAP_SIZE.x).map((p) => 1))
+const pathTiles = range(config.map.size.y).map((y) =>
+  range(config.map.size.x).map((p) => 1)
+)
 
-for (let z = 0; z < MAP_SIZE.z; z++) {
-  for (let y = 0; y < MAP_SIZE.y; y++) {
-    for (let x = 0; x < MAP_SIZE.x; x++) {
+for (let z = 0; z < config.map.size.z; z++) {
+  for (let y = 0; y < config.map.size.y; y++) {
+    for (let x = 0; x < config.map.size.x; x++) {
       const id = positionToId({ x, y, z })
       const position = { id, x, y, z }
-      const terrain = Math.random() > 0.9 ? "wall" : "none"
+
+      const isWall = !(
+        x > 0 &&
+        x < config.map.size.x - 1 &&
+        y > 0 &&
+        y < config.map.size.y - 1
+      )
+
+      const terrain = isWall ? "wall" : "none"
 
       if (terrain === "wall") {
         pathTiles[y][x] = 0
@@ -72,6 +75,7 @@ const data = {
     },
     tiles: {
       hovered: undefined as Tile | undefined,
+      inView: [] as BlockerInView[],
       inRange: [] as Tile[],
       inPath: [] as Tile[],
     },
@@ -97,6 +101,13 @@ const state = createStateDesigner({
       { get: "tileFromEntity", do: "setHoveredTile" },
     ],
     UNHOVERED_ENTITY: "clearHoveredEntity",
+    ADDED_WALL: [
+      {
+        get: "tileFromTile",
+        if: "tileIsEmpty",
+        do: "addWallToPosition",
+      },
+    ],
   },
   initial: "selecting",
   states: {
@@ -115,8 +126,12 @@ const state = createStateDesigner({
         TOGGLED_TURN: { to: "turning" },
         TOGGLED_MOVE: { to: "moving" },
         TOGGLED_AIM: { to: "aiming" },
+        ADDED_WALL: {
+          get: "selectedEntity",
+          do: "setEntityVision",
+        },
       },
-      onExit: "clearSelectedEntity",
+      onExit: ["clearSelectedEntity", "clearTilesInView"],
       onEnter: {
         get: "selectedEntity",
         do: "setEntityVision",
@@ -144,6 +159,13 @@ const state = createStateDesigner({
         moving: {
           initial: "selecting",
           onExit: "clearPath",
+          on: {
+            TOGGLED_MOVE: { to: "idle" },
+            CANCELLED: {
+              do: "clearPath",
+              to: "idle",
+            },
+          },
           states: {
             selecting: {
               onEnter: {
@@ -195,13 +217,6 @@ const state = createStateDesigner({
               },
             },
           },
-          on: {
-            TOGGLED_MOVE: { to: "idle" },
-            CANCELLED: {
-              do: "clearPath",
-              to: "idle",
-            },
-          },
         },
         turning: {
           onEnter: {
@@ -235,6 +250,20 @@ const state = createStateDesigner({
               to: "selected",
             },
           ],
+          on: {
+            TOGGLED_AIM: { to: "idle" },
+            CANCELLED: { to: "idle" },
+            ADDED_WALL: {
+              get: "hoveredEntity",
+              unless: ["entityIsSelected", "entityIsDead"],
+              if: [
+                "hoveredEntityIsVisibleToSelectedEntity",
+                "hoveredEntityIsInRangeOfSelectedEntity",
+              ],
+              do: "setTargetedEntity",
+              to: "selected",
+            },
+          },
           states: {
             selecting: {
               onEnter: { get: "selectedEntity", do: "setEntityVision" },
@@ -278,10 +307,6 @@ const state = createStateDesigner({
                 ],
               },
             },
-          },
-          on: {
-            TOGGLED_AIM: { to: "idle" },
-            CANCELLED: { to: "idle" },
           },
         },
       },
@@ -351,6 +376,10 @@ const state = createStateDesigner({
   },
   actions: {
     // Tiles
+    addWallToPosition(data, _, tile: Tile) {
+      tile.terrain = "wall"
+      pathGrid.addUnwalkableCoord(tile.position.x, tile.position.y)
+    },
     addEntityToTile(data, entity: Entity, tile: Tile) {
       tile.entity = entity.id
     },
@@ -539,6 +568,9 @@ const state = createStateDesigner({
       })
 
       data.ui.tiles.inRange = tilesInRange
+    },
+    clearTilesInView(data) {
+      data.ui.tiles.inView = []
     },
     clearTilesInRange(data) {
       data.ui.tiles.inRange = []

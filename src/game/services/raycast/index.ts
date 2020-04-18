@@ -1,4 +1,4 @@
-import { Position } from "game/types"
+import { Point, HitTest } from "game/types"
 
 function swap(collection: Record<string, number>, a: string, b: string) {
   let t = collection[a]
@@ -11,12 +11,12 @@ function deltaIsGreater(a: number[], b: number[]) {
   return Math.abs(a[0] - a[1]) > Math.abs(b[0] - b[1])
 }
 
-export function castRay<T = any>(
-  pointA: Position,
-  pointB: Position,
+export function castRayBetweenPoints<T = any>(
+  pointA: Point,
+  pointB: Point,
   memo: T,
-  onHit: (point: Partial<Position>, memo: T) => boolean | void,
-  onEnd?: (point: Partial<Position>, memo: T, complete: boolean) => void
+  onHit: (point: Point, memo: T) => boolean | void,
+  onEnd?: (point: Point, memo: T, complete: boolean) => void
 ) {
   // Safty first kids...
   const pts = {
@@ -116,15 +116,64 @@ export function castRay<T = any>(
     }
   }
 
-  const endPosition = { ...current, x: current.x + step.x }
+  const endPoint = { ...current, x: current.x + step.x }
+
+  if (onHit) {
+    onHit(endPoint, memo)
+  }
 
   if (onEnd) {
-    onEnd(endPosition, memo, true)
+    onEnd(endPoint, memo, true)
   }
 
   return {
-    point: endPosition,
+    point: endPoint,
     memo,
     complete: true,
   }
+}
+
+type RayCastResult<T> = {
+  point: Point
+  angle: number
+  distance: number
+  memo: T
+  complete: boolean
+}
+
+export function castRayInAngle<undefined>(
+  origin: Point,
+  angle: number,
+  range: number,
+  hitTest: HitTest<undefined>,
+  memo?: undefined
+): RayCastResult<undefined>
+export function castRayInAngle<T>(
+  origin: Point,
+  angle: number,
+  range: number,
+  hitTest: HitTest<T>,
+  memo: T
+): RayCastResult<T> {
+  const radians = ((180 - angle) * Math.PI) / 180
+
+  const step = {
+    x: Math.sin(radians) / 5,
+    y: Math.cos(radians) / 5,
+  }
+
+  let point = { x: origin.x + 0.5, y: origin.y + 0.5, z: 0 }
+
+  for (let t = 0; t < range; t += 0.2) {
+    point.x += step.x
+    point.y += step.y
+
+    const shouldStop = hitTest({ point, angle, distance: t, memo })
+
+    if (shouldStop) {
+      return { point, angle, distance: t, memo: memo as T, complete: false }
+    }
+  }
+
+  return { point, angle, distance: range, memo: memo as T, complete: true }
 }

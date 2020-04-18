@@ -1,60 +1,79 @@
 import { Data } from "game"
-import { Entity, Position } from "game/types"
-import { castRay } from "game/services/raycast"
+import { Entity, Position, BlockerInView } from "game/types"
+import { castRayBetweenPoints, castRayInAngle } from "game/services/raycast"
 import {
   directionAngles,
   getTile,
   positionToId,
   getOffsetAngle,
   wrap,
+  getDistanceBetweenPositions,
 } from "game/utils"
 
 export function setEntityVision(data: Data, _: any, entity: Entity) {
   const { position, vision } = entity
 
-  const positionsInView: string[] = [positionToId(entity.position)]
-  const entitiesInView: string[] = []
+  const blockersInView: Set<BlockerInView> = new Set([])
+  const entitiesInView: Set<string> = new Set([])
+  const positionsInView: Set<string> = new Set(positionToId(entity.position))
 
   const facingAngle = directionAngles[vision.facing]
 
-  Array.from(data.map.entries()).forEach(([tPos, tile]) => {
-    const offsetAngle = getOffsetAngle(position, tile.position)
-    const theta = wrap(facingAngle - offsetAngle - 180, 0, 360) - 180
+  for (let i = facingAngle - 64; i < facingAngle + 64; i++) {
+    castRayInAngle(position, i, 20, (event) => {
+      const { point, distance, angle } = event
 
-    if (Math.abs(theta) > 64) {
-      return
-    }
-
-    const result = castRay(position, tile.position, [] as string[], (pos) => {
-      const tile = getTile(data, pos)
+      const tile = getTile(data, {
+        x: Math.floor(point.x),
+        y: Math.floor(point.y),
+        z: 0,
+      })
 
       if (tile === undefined) {
         return true
       }
 
-      if (tile.terrain === "wall") return true
+      const tEntity = data.entities.get(tile.entity || "")
 
-      if (tile.entity && !(tile.entity === entity.id)) {
-        const tEnt = data.entities.get(tile.entity)
-        if (tEnt && !(tEnt.health.dead === true)) {
+      if (tEntity !== undefined) {
+        positionsInView.add(tile.position.id)
+
+        if (tEntity.id === entity.id) return false
+
+        if (tEntity.health.dead) {
+          blockersInView.add({
+            type: "corpse",
+            distance,
+            angle: angle - facingAngle,
+          })
+          return false
+        } else {
+          blockersInView.add({
+            type: "entity",
+            distance,
+            angle: angle - facingAngle,
+          })
+          entitiesInView.add(tEntity.id)
           return true
         }
       }
 
+      if (tile.terrain === "wall") {
+        blockersInView.add({
+          type: "wall",
+          distance,
+          angle: angle - facingAngle,
+        })
+
+        return true
+      }
+
+      positionsInView.add(tile.position.id)
       return false
     })
+  }
 
-    if (result.complete) {
-      positionsInView.push(tPos)
-      if (tile.entity !== undefined) {
-        const tEnt = data.entities.get(tile.entity)
-        if (tEnt && !(tEnt.id === entity.id || tEnt.health.dead === true)) {
-          entitiesInView.push(tEnt.id)
-        }
-      }
-    }
-  })
-
-  entity.vision.positions = positionsInView
-  entity.vision.entities = entitiesInView
+  entity.vision.positions = Array.from(positionsInView.values())
+  entity.vision.entities = Array.from(entitiesInView.values())
+  data.ui.tiles.inView = Array.from(blockersInView.values())
 }
