@@ -3,7 +3,14 @@ import range from "lodash-es/range"
 import uniqueId from "lodash-es/uniqueId"
 import { setEntityVision } from "game/services/fov"
 import Pathfinding, { Grid, GridType } from "game/services/pathfinding"
-import { Position, Tile, Entity, Direction, BlockerInView } from "game/types"
+import {
+  Position,
+  Tile,
+  Entity,
+  Direction,
+  BlockerInView,
+  TileInView,
+} from "game/types"
 import {
   getOffsetDirection,
   getOffsetAngle,
@@ -75,6 +82,7 @@ const data = {
     },
     tiles: {
       hovered: undefined as Tile | undefined,
+      tilesInView: [] as TileInView[],
       inView: [] as BlockerInView[],
       inRange: [] as Tile[],
       inPath: [] as Tile[],
@@ -360,7 +368,7 @@ const state = createStateDesigner({
 
       if (!(selected && hovered)) return false
 
-      return selected.vision.entities.includes(hovered.id)
+      return selected.vision.entities.has(hovered.id)
     },
     hoveredEntityIsInRangeOfSelectedEntity(data) {
       const selected = data.entities.get(data.ui.entities.selected || "")
@@ -605,8 +613,9 @@ export function getNewEntity(
     },
     vision: {
       facing: initialFacing,
-      positions: [] as string[],
-      entities: [] as string[],
+      positions: new Set<string>([]),
+      entities: new Set<string>([]),
+      angles: [],
     },
   }
 }

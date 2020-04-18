@@ -88,15 +88,15 @@ const EntityDetails: React.FC<Props> = () => {
         </Row>
         <Row>
           <span>Visible Positions</span>
-          <span>{vision.positions.length}</span>
+          <span>{vision.positions.size}</span>
         </Row>
         <Row>
           <span>Visible Entities</span>
-          <span>{vision.entities.length}</span>
+          <span>{vision.entities.size}</span>
         </Row>
         <Row>
           <ul>
-            {vision.entities.map((id, i) => (
+            {Array.from(vision.entities.values()).map((id, i) => (
               <li key={i}>{data.entities.get(id)?.id}</li>
             ))}
           </ul>

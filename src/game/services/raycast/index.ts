@@ -133,33 +133,25 @@ export function castRayBetweenPoints<T = any>(
   }
 }
 
-type RayCastResult<T> = {
+type RayCastResult = {
   point: Point
   angle: number
   distance: number
-  memo: T
   complete: boolean
 }
 
-export function castRayInAngle<undefined>(
+export function castRayInAngle(
   origin: Point,
   angle: number,
   range: number,
-  hitTest: HitTest<undefined>,
-  memo?: undefined
-): RayCastResult<undefined>
-export function castRayInAngle<T>(
-  origin: Point,
-  angle: number,
-  range: number,
-  hitTest: HitTest<T>,
-  memo: T
-): RayCastResult<T> {
+  hitTest: HitTest,
+  accuracy = 5
+): RayCastResult {
   const radians = ((180 - angle) * Math.PI) / 180
 
   const step = {
-    x: Math.sin(radians) / 5,
-    y: Math.cos(radians) / 5,
+    x: Math.sin(radians) / accuracy,
+    y: Math.cos(radians) / accuracy,
   }
 
   let point = { x: origin.x + 0.5, y: origin.y + 0.5, z: 0 }
@@ -168,12 +160,12 @@ export function castRayInAngle<T>(
     point.x += step.x
     point.y += step.y
 
-    const shouldStop = hitTest({ point, angle, distance: t, memo })
+    const shouldStop = hitTest({ point, angle, distance: t })
 
     if (shouldStop) {
-      return { point, angle, distance: t, memo: memo as T, complete: false }
+      return { point, angle, distance: t, complete: false }
     }
   }
 
-  return { point, angle, distance: range, memo: memo as T, complete: true }
+  return { point, angle, distance: range, complete: true }
 }

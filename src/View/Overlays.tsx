@@ -49,18 +49,20 @@ const Overlays: React.FC<Props> = ({ children }) => {
   const tilesInView = React.useMemo(() => {
     return (
       selectedEntity &&
-      Array.from(data.map.values()).map((tile, i) => (
-        <CellHighlight
-          key={i}
-          x={tile.position.x}
-          y={tile.position.y}
-          color={
-            selectedEntity.vision.positions.includes(tile.id)
-              ? "var(--highlight)"
-              : "var(--indent)"
-          }
-        />
-      ))
+      Array.from(data.map.values()).map((tile, i) => {
+        return (
+          <CellHighlight
+            key={i}
+            x={tile.position.x}
+            y={tile.position.y}
+            color={
+              selectedEntity.vision.positions.has(tile.id)
+                ? "var(--highlight)"
+                : "var(--indent)"
+            }
+          />
+        )
+      })
     )
   }, [selectedEntity, selectedEntity?.vision.positions])
 

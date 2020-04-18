@@ -35,9 +35,13 @@ export type Entity = {
     }
   }
   vision: {
-    positions: string[]
-    entities: string[]
+    positions: Set<string>
+    entities: Set<string>
     facing: Direction
+    angles: {
+      blocking?: TileInView
+      items: Map<string, TileInView>
+    }[]
   }
 }
 
@@ -82,17 +86,24 @@ export type Tile = {
   terrain: "none" | "wall"
 }
 
+export type TileInView = {
+  angle: number
+  distance: number
+  tile: Tile
+  blocking: boolean
+  type: "wall" | "floor" | "entity" | "corpse"
+}
+
 export type BlockerInView = {
   angle: number
   distance: number
   type: "wall" | "entity" | "corpse"
 }
 
-export type HitTestEvent<T> = {
+export type HitTestEvent = {
   point: Point
   angle: number
   distance: number
-  memo: T
 }
 
-export type HitTest<T> = (event: HitTestEvent<T>) => boolean
+export type HitTest = (event: HitTestEvent) => boolean

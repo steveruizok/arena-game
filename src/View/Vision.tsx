@@ -1,6 +1,6 @@
 import React from "react"
 import game from "game"
-import { BlockerInView } from "game/types"
+import { BlockerInView, TileInView } from "game/types"
 import styled from "@emotion/styled"
 import { useStateDesigner } from "state-designer"
 import { transform } from "framer-motion"
@@ -20,17 +20,10 @@ const Container = styled.div({
   justifyContent: "center",
 })
 
-const colors = {
-  entity: "238, 232, 220",
-  wall: "107, 224, 232",
-  corpse: "121, 122, 119",
-}
-
 const VisionCanvas: React.FC<Props> = ({
   width = 320,
   height = 128,
   fov = 128,
-  children,
 }) => {
   const { data } = useStateDesigner(game)
   const rCanvas = React.useRef<HTMLCanvasElement>(null)
@@ -40,9 +33,10 @@ const VisionCanvas: React.FC<Props> = ({
     const ctx = cvs?.getContext("2d")
     if (!ctx) return
 
-    const { inView } = data.ui.tiles
+    const selected = data.entities.get(data.ui.entities.selected || "")
+    if (!selected) return
 
-    paintRaycastVision(ctx, width, height, fov, inView)
+    paintRaycastVision(ctx, width, height, fov, selected.vision.angles)
   }, [data.ui.tiles.inView])
 
   return (
@@ -59,12 +53,22 @@ const VisionCanvas: React.FC<Props> = ({
 
 export default VisionCanvas
 
+const colors = {
+  entity: "238, 232, 220",
+  wall: "107, 224, 232",
+  corpse: "121, 122, 119",
+  floor: "0, 255, 255",
+}
+
 function paintRaycastVision(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   fov: number,
-  inView: BlockerInView[]
+  inView: {
+    blocking?: TileInView
+    items: Map<string, TileInView>
+  }[]
 ) {
   const cw = 256
   const ch = height - 32
@@ -90,11 +94,11 @@ function paintRaycastVision(
   ctx.fillStyle = g
   ctx.fillRect(0, 0, cw, ch)
 
-  // Paint blocking items (walls, entities)
-  for (let i = 0; i < inView.length; i++) {
-    const { angle, distance, type } = inView[i]
+  inView.forEach((item, id) => {
+    const { blocking } = item
+    if (!blocking) return
 
-    if (type === "corpse") continue
+    const { angle, distance, type } = blocking
 
     const d = transform(distance, [0, 16], [1, 0], {
       ease: (t) => t * (2 - t),
@@ -113,28 +117,33 @@ function paintRaycastVision(
     ctx.stroke()
     ctx.strokeStyle = `rgba(${colors[type] || ""},${d})`
     ctx.stroke()
-  }
+  })
 
-  // Paint non-blocking items (corpses)
-  for (let i = 0; i < inView.length; i++) {
-    const { angle, distance, type } = inView[i]
+  inView.forEach((item, id) => {
+    Array.from(item.items.values()).forEach((item) => {
+      const { angle, distance, blocking, type } = item
+      if (blocking) return
+      if (type === "floor") return
 
-    if (type !== "corpse") continue
+      const d = transform(distance, [0, 16], [1, 0], {
+        ease: (t) => t * (2 - t),
+      })
 
-    const d = transform(distance, [0, 16], [1, 0], {
-      ease: (t) => t * (2 - t),
+      const lh = (d * ch) / 2
+      const lX = lw * (angle + 64)
+
+      ctx.beginPath()
+
+      if (type === "corpse") {
+        ctx.moveTo(lX, cm + lh * 0.75)
+        ctx.lineTo(lX, cm + lh)
+      }
+
+      ctx.lineWidth = lw
+      ctx.strokeStyle = `rgb(58, 59, 60)`
+      ctx.stroke()
+      ctx.strokeStyle = `rgba(${colors[type] || ""},${d})`
+      ctx.stroke()
     })
-
-    const lh = (d * ch) / 2
-    const lX = lw * (angle + 64)
-
-    ctx.moveTo(lX, cm + lh - 12)
-    ctx.lineTo(lX, cm + lh)
-
-    ctx.lineWidth = lw
-    ctx.strokeStyle = `rgb(58, 59, 60)`
-    ctx.stroke()
-    ctx.strokeStyle = `rgba(${colors[type] || ""},${d})`
-    ctx.stroke()
-  }
+  })
 }
