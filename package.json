@@ -26,7 +26,7 @@
     "react-spring": "^8.0.27",
     "react-three-fiber": "^4.0.28",
     "state-designer": "^1.0.43",
-    "three": "^0.115.0",
+    "three": "^0.125.0",
     "typescript": "~3.7.2"
   },
   "scripts": {
